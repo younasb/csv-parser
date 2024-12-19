@@ -1,0 +1,3 @@
+node-csv-server/files-storage/download/*
+node-csv-server/files-storage/chunks/*
+node-csv-server/files-storage/merged/*

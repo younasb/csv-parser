@@ -6,6 +6,7 @@ import { HttpCode } from '../core/constants';
 import csvtojson from 'csvtojson';
 import { type UserData } from '../core/types';
 import { Parser } from '@json2csv/plainjs';
+import archiver from 'archiver';
 
 interface UploadBody {
 	chunkNumber: string;
@@ -17,9 +18,10 @@ interface RequestQuery {
 }
 
 export class CsvController {
+	readonly downloadFolderName = 'files-storage/download';
 	readonly chunkDir: string = path.resolve(process.cwd(), 'files-storage/chunks');
 	readonly mergedFilePath: string = path.resolve(process.cwd(), 'files-storage/merged');
-	readonly filesDownloadPath: string = path.resolve(process.cwd(), 'files-storage/download');
+	readonly filesDownloadPath: string = path.resolve(process.cwd(), this.downloadFolderName);
 
 	readonly parserOpts = {};
 	readonly parser = new Parser(this.parserOpts);
@@ -64,7 +66,7 @@ export class CsvController {
 
 	public csvParser = async (
 		req: Request<unknown, unknown, unknown, RequestQuery>,
-		res: Response<{ message: string }>,
+		res: Response<{ message: string; paths: Array<{ gender: 'male' | 'female'; path: string }> }>,
 		next: NextFunction
 	): Promise<void> => {
 		const { originalname } = req.query;
@@ -97,25 +99,47 @@ export class CsvController {
 			const femaleCsv = this.jsonToCsv(femaleData);
 			fs.writeFileSync(csvFemaleFilePath, femaleCsv);
 
-			res.status(HttpCode.OK).json({ message: `array lenth :${jsonArray.length}` });
+			res.status(HttpCode.OK).json({
+				message: `Parser success result :${jsonArray.length}`,
+				paths: [
+					{
+						gender: 'male',
+						path: `${basename}_male.csv`
+					},
+					{
+						gender: 'female',
+						path: `${basename}_female.csv`
+					}
+				]
+			});
 		} catch (error) {
 			console.log('error: ', error);
 			next(AppError.badRequest('error while parsing the file', 'PARSE_ERROR'));
 		}
 	};
 
-	public csvDownload = (req: Request, res: Response<{ message: string }>, next: NextFunction): void => {
+	public csvDownload = (req: Request, res: Response, next: NextFunction): void => {
 		const filePath = path.join(this.filesDownloadPath, req.params.filename);
 		if (fs.existsSync(filePath)) {
-			res.download(filePath, (err) => {
-				if (err) {
-					next(AppError.internalServer('Error while downloading the file', 'DOWNLOAD_ERROR'));
-				}
+			const zipFileName = `${req.params.filename.split('.')[0]}.zip`;
+			console.log('zipFileName: ', zipFileName);
+
+			res.setHeader('Content-Disposition', `attachment; filename="${zipFileName}"`);
+			res.setHeader('Content-Type', 'application/zip');
+
+			const archive = archiver('zip', { zlib: { level: 9 } }); // Compression level 9 (maximum)
+
+			archive.on('error', (err) => {
+				console.error('Error while creating the ZIP archive:', err);
+				next(AppError.internalServer('Error while downloading the file', 'DOWNLOAD_ERROR'));
 			});
+
+			archive.pipe(res);
+			archive.file(filePath, { name: req.params.filename });
+			archive.finalize();
 		} else {
 			next(AppError.notFound('File not found'));
 		}
-		res.status(HttpCode.OK).json({ message: 'Download OK' });
 	};
 
 	private async mergeChunks(fileName: string, totalChunks: number): Promise<void> {

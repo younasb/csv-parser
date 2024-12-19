@@ -31,7 +31,7 @@ export class Server {
 
 		// CORS
 		this.app.use((req, res, next) => {
-			const allowedOrigins = [`http://localhost:3000`];
+			const allowedOrigins = ['http://localhost:3000'];
 			const origin = req.headers.origin;
 			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 			if (allowedOrigins.includes(origin!)) {

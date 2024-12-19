@@ -28,3 +28,8 @@ export interface UserData {
 	randomString6: string;
 	randomString7: string;
 }
+
+export type HttpConfig = {
+	headers?: Record<string, string>;
+	controller?: AbortController;
+};

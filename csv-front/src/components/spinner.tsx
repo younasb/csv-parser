@@ -1,6 +1,6 @@
 import { FC } from 'react';
 
-const Spinner: FC = () => {
+const Spinner: FC<{ message: string }> = ({ message }) => {
 	return (
 		<div className="flex flex-col items-center ">
 			<div className="flex size-12.5 items-center justify-center rounded-full border-[7px] border-stroke dark:border-strokedark">
@@ -18,7 +18,7 @@ const Spinner: FC = () => {
 					</svg>
 				</div>
 			</div>
-			<p className="font-bold text-white pt-5">Uploading ...</p>
+			<p className="font-bold text-white pt-5">{message}</p>
 		</div>
 	);
 };
